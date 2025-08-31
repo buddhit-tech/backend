@@ -9,25 +9,26 @@ import (
 )
 
 type Config struct {
-	Port       string
-	DBHost     string
-	DBUser     string
-	DBPassword string
-	DBName     string
-	DBSSLMode  string
-	Memcache   string
-	JWTSecret  string
-	DevMode    bool
-	OTPTTL     int
+	Port         string
+	DBHost       string
+	DBUser       string
+	DBPassword   string
+	DBName       string
+	DBSSLMode    string
+	MemcacheAddr string
+	JWTSecret    string
+	DevMode      bool
+	OTPTTL       int
+	DBURL        string
 }
 
 // LoadConfig loads .env and environment variables
 func LoadConfig() *Config {
 	// Load .env
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using system environment variables")
+		log.Println("⚠️ No .env file found, using system environment variables")
 	} else {
-		log.Println(".env loaded successfully")
+		log.Println("✅ .env loaded successfully")
 	}
 
 	// OTP TTL
@@ -39,22 +40,20 @@ func LoadConfig() *Config {
 	}
 
 	// Dev mode
-	devMode := false
-	if os.Getenv("DEV_MODE") == "true" {
-		devMode = true
-	}
+	devMode := os.Getenv("DEV_MODE") == "true"
 
 	cfg := &Config{
-		Port:       mustGetEnv("PORT"),
-		DBHost:     mustGetEnv("DB_HOST"),
-		DBUser:     mustGetEnv("POSTGRES_USER"),
-		DBPassword: mustGetEnv("POSTGRES_PASSWORD"),
-		DBName:     mustGetEnv("POSTGRES_DB"),
-		DBSSLMode:  mustGetEnv("DB_SSLMODE"),
-		Memcache:   mustGetEnv("MEMCACHE_ADDR"),
-		JWTSecret:  mustGetEnv("JWT_SECRET"),
-		DevMode:    devMode,
-		OTPTTL:     otpTTL,
+		Port:         mustGetEnv("PORT"),
+		DBHost:       mustGetEnv("DB_HOST"),
+		DBUser:       mustGetEnv("POSTGRES_USER"),
+		DBPassword:   mustGetEnv("POSTGRES_PASSWORD"),
+		DBName:       mustGetEnv("POSTGRES_DB"),
+		DBSSLMode:    mustGetEnv("DB_SSLMODE"),
+		MemcacheAddr: mustGetEnv("MEMCACHE_ADDR"), // 👈 fixed
+		JWTSecret:    mustGetEnv("JWT_SECRET"),
+		DevMode:      devMode,
+		OTPTTL:       otpTTL,
+		DBURL:        os.Getenv("DATABASE_URL"), // optional
 	}
 
 	// DEBUG: print config (hide password)

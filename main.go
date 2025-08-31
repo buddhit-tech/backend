@@ -12,23 +12,31 @@ import (
 )
 
 func main() {
+	// Load config
 	cfg := config.LoadConfig()
 
+	// Connect to DB
 	dbConn, err := db.Connect(cfg)
 	if err != nil {
 		log.Fatal("DB connection error:", err)
 	}
 	defer dbConn.Close()
 
-	mc := memcache.New(cfg.Memcache)
+	// Initialize Memcache client (expects address like "localhost:11211")
+	mc := memcache.New(cfg.MemcacheAddr)
+	if mc == nil {
+		log.Fatal("Failed to initialize memcache client")
+	}
 
+	// Setup Gin router
 	r := gin.Default()
 
-	// Register routes using *gin.Engine
+	// Register routes
 	routes.RegisterRoutes(r, dbConn, mc, cfg)
 
-	log.Println("Server running on port", cfg.Port)
+	// Start server
+	log.Println("✅ Server running on port", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
-		log.Fatal(err)
+		log.Fatal("Server failed:", err)
 	}
 }
