@@ -1,84 +1,118 @@
 package handlers
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"time"
 
-	"school-auth/internal/services"
-
 	"github.com/bradfitz/gomemcache/memcache"
-	"github.com/gin-gonic/gin"
 )
 
-// Request payloads
+// ====== Request payloads ======
 type StudentLoginRequest struct {
 	StudentID string `json:"student_id"`
 }
 
-type VerifyOTPRequest struct {
+type VerifyStudentOTPRequest struct {
 	UID string `json:"uid"`
 	OTP string `json:"otp"`
 }
 
-// StudentLogin - POST /student/login
-func StudentLogin(db *sql.DB, mc *memcache.Client, devMode bool, otpTTL int) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req StudentLoginRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+// ====== Combined Auth Handler ======
+func StudentAuthHandler(db *sql.DB, mc *memcache.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
-		var email string
-		if err := db.QueryRow(`SELECT email FROM students WHERE student_id=$1`, req.StudentID).Scan(&email); err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "student not found"})
+		// Step 1: Decode request
+		var loginReq StudentLoginRequest
+		if err := json.NewDecoder(r.Body).Decode(&loginReq); err != nil {
+			http.Error(w, "invalid request", http.StatusBadRequest)
 			return
 		}
 
-		otp := services.GenerateOTP()
-		key := "student:" + req.StudentID
-		if err := services.StoreOTP(mc, key, otp, otpTTL); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store otp"})
+		// Step 2: Generate UID + OTP
+		uid := generateUID()
+		otp := "123456" // Static OTP for now, replace with random later
+
+		// Store OTP in Memcache with TTL 5 mins
+		if err := mc.Set(&memcache.Item{
+			Key:        "student_otp_" + uid,
+			Value:      []byte(otp),
+			Expiration: 300,
+		}); err != nil {
+			http.Error(w, "failed to store otp", http.StatusInternalServerError)
 			return
 		}
-		services.SendOTP(devMode, email, otp)
 
-		c.JSON(http.StatusOK, gin.H{"message": "OTP sent (or logged in dev mode)", "uid": req.StudentID})
+		// Response with UID (to be used for verification)
+		json.NewEncoder(w).Encode(map[string]string{
+			"uid": uid,
+			"msg": "OTP sent (mocked)",
+		})
 	}
 }
 
-// StudentVerifyOTP - POST /student/otp/verify
-func StudentVerifyOTP(db *sql.DB, mc *memcache.Client, jwtSecret []byte) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var req VerifyOTPRequest
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+func VerifyStudentOTPHandler(db *sql.DB, mc *memcache.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
-		key := "student:" + req.UID
-		if !services.VerifyOTP(mc, key, req.OTP) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired otp"})
+		var req VerifyStudentOTPRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "invalid request", http.StatusBadRequest)
 			return
 		}
 
-		var name, email string
-		if err := db.QueryRow(`SELECT full_name, email FROM students WHERE student_id=$1`, req.UID).Scan(&name, &email); err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
-			return
-		}
-
-		token, err := services.CreateToken(jwtSecret, req.UID, "student", name, email, 24*time.Hour)
+		// Step 1: Get OTP from memcache
+		item, err := mc.Get("student_otp_" + req.UID)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create token"})
+			http.Error(w, "otp expired or not found", http.StatusUnauthorized)
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"message": "OTP verified",
-			"token":   token,
-			"user":    gin.H{"uid": req.UID, "role": "student", "name": name, "email": email},
+		// Step 2: Compare
+		if string(item.Value) != req.OTP {
+			http.Error(w, "invalid otp", http.StatusUnauthorized)
+			return
+		}
+
+		// Step 3: Create session token
+		sessionToken := GenerateSessionToken()
+
+		// Store session in memcache with TTL 1 hour
+		if err := mc.Set(&memcache.Item{
+			Key:        "student_session_" + req.UID,
+			Value:      []byte(sessionToken),
+			Expiration: int32(time.Hour.Seconds()),
+		}); err != nil {
+			http.Error(w, "failed to create session", http.StatusInternalServerError)
+			return
+		}
+
+		// Response
+		json.NewEncoder(w).Encode(map[string]string{
+			"session_token": sessionToken,
 		})
 	}
+}
+
+// ===== Helpers =====
+func generateUID() string {
+	b := make([]byte, 4)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
+func GenerateSessionToken() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return hex.EncodeToString(b)
 }
