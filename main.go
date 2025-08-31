@@ -2,13 +2,13 @@ package main
 
 import (
 	"log"
-	"net/http"
 
 	"school-auth/internal/config"
 	"school-auth/internal/db"
 	"school-auth/internal/routes"
 
 	"github.com/bradfitz/gomemcache/memcache"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -19,14 +19,16 @@ func main() {
 		log.Fatal("DB connection error:", err)
 	}
 	defer dbConn.Close()
-	log.Println("✅ Connected to PostgreSQL successfully")
 
 	mc := memcache.New(cfg.Memcache)
-	log.Println("✅ Memcache client initialized")
 
-	mux := http.NewServeMux()
-	routes.RegisterRoutes(mux, dbConn, mc, cfg)
+	r := gin.Default()
+
+	// Register routes using *gin.Engine
+	routes.RegisterRoutes(r, dbConn, mc, cfg)
 
 	log.Println("Server running on port", cfg.Port)
-	log.Fatal(http.ListenAndServe(":"+cfg.Port, mux))
+	if err := r.Run(":" + cfg.Port); err != nil {
+		log.Fatal(err)
+	}
 }
