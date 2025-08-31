@@ -2,26 +2,72 @@ package routes
 
 import (
 	"database/sql"
-
-	"school-auth/internal/config"
-	"school-auth/internal/handlers"
+	"net/http"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterRoutes(r *gin.Engine, db *sql.DB, mc *memcache.Client, cfg *config.Config) {
-    // Student routes
-    r.POST("/student/login", handlers.StudentLogin(db, mc, cfg.DevMode, cfg.OTPTTL))
-    r.POST("/student/otp/verify", handlers.StudentVerifyOTP(db, mc, []byte(cfg.JWTSecret)))
+func RegisterRoutes(r *gin.Engine, db *sql.DB, mc *memcache.Client, cfg interface{}) {
+	r.GET("/teachers", func(c *gin.Context) {
+		rows, err := db.Query("SELECT * FROM teachers")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		defer rows.Close()
 
-    // Teacher routes
-    r.POST("/teacher/login", handlers.TeacherLogin(db, mc, cfg.DevMode, cfg.OTPTTL))
-    r.POST("/teacher/otp/verify", handlers.TeacherVerifyOTP(db, mc, []byte(cfg.JWTSecret)))
+		var teachers []map[string]interface{}
+		for rows.Next() {
+			var id, teacherID, fullName, email, phone, school, dob, image string
+			if err := rows.Scan(&id, &teacherID, &fullName, &email, &phone, &school, &dob, &image); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			teachers = append(teachers, map[string]interface{}{
+				"id":          id,
+				"teacher_id":  teacherID,
+				"full_name":   fullName,
+				"email":       email,
+				"phone_number": phone,
+				"school":      school,
+				"dob":         dob,
+				"image":       image,
+			})
+		}
 
-    // Health check
-    r.GET("/healthz", func(c *gin.Context) {
-        c.String(200, "ok")
-    })
+		c.JSON(http.StatusOK, teachers)
+	})
+
+	r.GET("/students", func(c *gin.Context) {
+		rows, err := db.Query("SELECT * FROM students")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		defer rows.Close()
+
+		var students []map[string]interface{}
+		for rows.Next() {
+			var id, studentID, fullName, email, phone, school, teacherID, dob, image, class string
+			if err := rows.Scan(&id, &studentID, &fullName, &email, &phone, &school, &teacherID, &dob, &image, &class); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+				return
+			}
+			students = append(students, map[string]interface{}{
+				"id":          id,
+				"student_id":  studentID,
+				"full_name":   fullName,
+				"email":       email,
+				"phone_number": phone,
+				"school":      school,
+				"teacher_id":  teacherID,
+				"dob":         dob,
+				"image":       image,
+				"class":       class,
+			})
+		}
+
+		c.JSON(http.StatusOK, students)
+	})
 }
-
