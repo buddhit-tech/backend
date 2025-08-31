@@ -1,0 +1,37 @@
+<!-- static/index.html -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Login OTP Demo</title></head>
+<body>
+  <h2>Request OTP</h2>
+  <input id="uid" placeholder="student_id or teacher_id"/>
+  <select id="type"><option value="student">student</option><option value="teacher">teacher</option></select>
+  <button onclick="requestOtp()">Request OTP</button>
+  <div id="msg"></div>
+
+  <h2>Verify OTP</h2>
+  <input id="verifyUid" placeholder="uid"/>
+  <input id="otp" placeholder="otp"/>
+  <select id="verifyType"><option value="student">student</option><option value="teacher">teacher</option></select>
+  <button onclick="verifyOtp()">Verify</button>
+
+<script>
+async function requestOtp(){
+  const uid = document.getElementById('uid').value;
+  const typ = document.getElementById('type').value;
+  const body = typ === 'student' ? {student_id: uid} : {teacher_id: uid};
+  const res = await fetch('/request-otp', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  const j = await res.json();
+  document.getElementById('msg').innerText = JSON.stringify(j);
+}
+async function verifyOtp(){
+  const uid = document.getElementById('verifyUid').value;
+  const otp = document.getElementById('otp').value;
+  const typ = document.getElementById('verifyType').value;
+  const res = await fetch('/verify-otp', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({role:typ, uid:uid, otp:otp})});
+  const j = await res.json();
+  document.getElementById('msg').innerText = JSON.stringify(j);
+}
+</script>
+</body>
+</html>

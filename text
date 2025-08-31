@@ -1,0 +1,26 @@
+student:
+
+curl -s -X POST http://localhost:8080/request-otp \
+  -H "Content-Type: application/json" \
+  -d '{"student_id":"S001"}'
+
+curl -s -X POST http://localhost:8080/verify-otp \
+  -H "Content-Type: application/json" \
+  -d '{"role":"student","uid":"S001","otp":"110182"}'
+
+Teacher:
+
+
+curl -s -X POST http://localhost:8080/request-otp \
+  -H "Content-Type: application/json" \
+  -d '{"teacher_id":"T001"}'
+
+
+curl -s -X POST http://localhost:8080/verify-otp \
+  -H "Content-Type: application/json" \
+  -d '{"role":"teacher","uid":"T001","otp":""}'
+
+
+curl -s -X GET http://localhost:8080/profile \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImhhcmluaUBzdHVkZW50LmNvbSIsImV4cCI6MTc1NjY1ODk0MiwibmFtZSI6IkhhcmluaSIsInJvbGUiOiJzdHVkZW50IiwidWlkIjoiUzAwMSJ9.H2D8xIyQt-M_fsaxHpHqsK2tfDSJNG5zp0RwYIdBd48"
+
