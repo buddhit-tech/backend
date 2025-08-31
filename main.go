@@ -1,42 +1,57 @@
 package main
 
 import (
+	"database/sql"
 	"log"
-
-	"school-auth/internal/config"
-	"school-auth/internal/db"
-	"school-auth/internal/routes"
+	"os"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/gin-gonic/gin"
+	_ "github.com/go-sql-driver/mysql"
+
+	"school-auth/internal/handlers"
 )
 
 func main() {
-	// Load config
-	cfg := config.LoadConfig()
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
-	// Connect to DB
-	dbConn, err := db.Connect(cfg)
+	dsn := os.Getenv("DB_DSN")
+	if dsn == "" {
+		log.Fatal("DB_DSN required")
+	}
+
+	memcacheAddr := os.Getenv("MEMCACHE_ADDR")
+	if memcacheAddr == "" {
+		memcacheAddr = "localhost:11211"
+	}
+
+	dbConn, err := sql.Open("mysql", dsn)
 	if err != nil {
 		log.Fatal("DB connection error:", err)
 	}
 	defer dbConn.Close()
 
-	// Initialize Memcache client (expects address like "localhost:11211")
-	mc := memcache.New(cfg.MemcacheAddr)
-	if mc == nil {
-		log.Fatal("Failed to initialize memcache client")
+	if err := dbConn.Ping(); err != nil {
+		log.Fatal("DB unreachable:", err)
 	}
 
-	// Setup Gin router
+	mc := memcache.New(memcacheAddr)
+
 	r := gin.Default()
 
-	// Register routes
-	routes.RegisterRoutes(r, dbConn, mc, cfg)
+	// Teacher routes
+	r.POST("/teachers/auth", handlers.TeacherLoginHandler(dbConn, mc))
+	r.POST("/teachers/verify", handlers.VerifyTeacherOTPHandler(dbConn, mc))
 
-	// Start server
-	log.Println("✅ Server running on port", cfg.Port)
-	if err := r.Run(":" + cfg.Port); err != nil {
+	// Student routes
+	r.POST("/students/auth", handlers.StudentLoginHandler(dbConn, mc))
+	r.POST("/students/verify", handlers.VerifyStudentOTPHandler(dbConn, mc))
+
+	log.Println("Server running on port", port)
+	if err := r.Run(":" + port); err != nil {
 		log.Fatal("Server failed:", err)
 	}
 }
