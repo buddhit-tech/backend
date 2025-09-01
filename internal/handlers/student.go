@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"net/http"
 	"time"
+
+	"school-auth/internal/models"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/gin-gonic/gin"
@@ -20,8 +23,8 @@ type VerifyStudentOTPRequest struct {
 	OTP string `json:"otp"`
 }
 
-// StudentLoginHandler generates OTP for students
-func StudentLoginHandler(db any, mc *memcache.Client) gin.HandlerFunc {
+// StudentLoginHandler generates a unique OTP for students
+func StudentLoginHandler(db *sql.DB, mc *memcache.Client, otpTTLSeconds int) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req StudentLoginRequest
 		if err := c.ShouldBindJSON(&req); err != nil || req.StudentID == "" {
@@ -29,24 +32,37 @@ func StudentLoginHandler(db any, mc *memcache.Client) gin.HandlerFunc {
 			return
 		}
 
-		uid := generateUID()
-		otp := "654321" // demo OTP
-
-		if err := mc.Set(&memcache.Item{
-			Key:        "student_otp_" + uid,
-			Value:      []byte(otp),
-			Expiration: 300,
-		}); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store otp"})
+		var s models.Student
+		err := db.QueryRow(`
+			SELECT id, student_id, full_name, email, phone, school, teacher_id, dob, image, class
+			FROM students WHERE student_id=$1
+		`, req.StudentID).Scan(&s.ID, &s.StudentID, &s.FullName, &s.Email, &s.Phone, &s.School, &s.TeacherID, &s.DOB, &s.Image, &s.Class)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "student not found"})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"uid": uid, "msg": "OTP sent (mocked)"})
+		uid := StudentGenerateUID()
+		otp := StudentGenerateOTP()
+
+		// Store OTP in Memcached
+		mc.Set(&memcache.Item{
+			Key:        "student_otp_" + uid,
+			Value:      []byte(otp),
+			Expiration: int32(otpTTLSeconds),
+		})
+
+		c.JSON(http.StatusOK, gin.H{
+			"uid":     uid,
+			"otp":     otp, // for testing
+			"message": "OTP sent successfully",
+			"student": s,
+		})
 	}
 }
 
 // VerifyStudentOTPHandler verifies OTP and returns session token
-func VerifyStudentOTPHandler(db any, mc *memcache.Client) gin.HandlerFunc {
+func VerifyStudentOTPHandler(mc *memcache.Client) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req VerifyStudentOTPRequest
 		if err := c.ShouldBindJSON(&req); err != nil || req.UID == "" || req.OTP == "" {
@@ -60,29 +76,34 @@ func VerifyStudentOTPHandler(db any, mc *memcache.Client) gin.HandlerFunc {
 			return
 		}
 
-		sessionToken := GenerateSessionToken()
-		if err := mc.Set(&memcache.Item{
+		sessionToken := StudentGenerateSessionToken()
+		mc.Set(&memcache.Item{
 			Key:        "student_session_" + req.UID,
 			Value:      []byte(sessionToken),
 			Expiration: int32(time.Hour.Seconds()),
-		}); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create session"})
-			return
-		}
+		})
 
 		c.JSON(http.StatusOK, gin.H{"session_token": sessionToken})
 	}
 }
 
-// Helpers
-func generateUID() string {
+// ------------------
+// Helpers (student-specific)
+// ------------------
+func StudentGenerateUID() string {
 	b := make([]byte, 4)
 	rand.Read(b)
 	return hex.EncodeToString(b)
 }
 
-func GenerateSessionToken() string {
+func StudentGenerateSessionToken() string {
 	b := make([]byte, 16)
 	rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+func StudentGenerateOTP() string {
+	b := make([]byte, 3)
+	rand.Read(b)
+	return hex.EncodeToString(b)[:6]
 }

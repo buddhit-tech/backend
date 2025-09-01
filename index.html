@@ -1,37 +1,57 @@
-<!-- static/index.html -->
-<!doctype html>
-<html>
-<head><meta charset="utf-8"><title>Login OTP Demo</title></head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>School Auth System</title>
+</head>
 <body>
-  <h2>Request OTP</h2>
-  <input id="uid" placeholder="student_id or teacher_id"/>
-  <select id="type"><option value="student">student</option><option value="teacher">teacher</option></select>
-  <button onclick="requestOtp()">Request OTP</button>
-  <div id="msg"></div>
+    <h1>Student Login</h1>
+    <input type="text" id="student_id" placeholder="Enter Student ID">
+    <button onclick="loginStudent()">Login</button>
 
-  <h2>Verify OTP</h2>
-  <input id="verifyUid" placeholder="uid"/>
-  <input id="otp" placeholder="otp"/>
-  <select id="verifyType"><option value="student">student</option><option value="teacher">teacher</option></select>
-  <button onclick="verifyOtp()">Verify</button>
+    <h2>OTP Verification</h2>
+    <input type="text" id="uid" placeholder="Enter UID">
+    <input type="text" id="otp" placeholder="Enter OTP">
+    <button onclick="verifyOTP()">Verify OTP</button>
 
-<script>
-async function requestOtp(){
-  const uid = document.getElementById('uid').value;
-  const typ = document.getElementById('type').value;
-  const body = typ === 'student' ? {student_id: uid} : {teacher_id: uid};
-  const res = await fetch('/request-otp', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-  const j = await res.json();
-  document.getElementById('msg').innerText = JSON.stringify(j);
-}
-async function verifyOtp(){
-  const uid = document.getElementById('verifyUid').value;
-  const otp = document.getElementById('otp').value;
-  const typ = document.getElementById('verifyType').value;
-  const res = await fetch('/verify-otp', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({role:typ, uid:uid, otp:otp})});
-  const j = await res.json();
-  document.getElementById('msg').innerText = JSON.stringify(j);
-}
-</script>
+    <h3>Login Response:</h3>
+    <p><strong>UID:</strong> <span id="display_uid">-</span></p>
+    <p><strong>OTP:</strong> <span id="display_otp">-</span></p>
+    <pre id="response"></pre>
+
+    <script>
+        async function loginStudent() {
+            const student_id = document.getElementById("student_id").value;
+            const res = await fetch("http://localhost:8080/student/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ student_id })
+            });
+            const data = await res.json();
+
+            // Display UID & OTP
+            document.getElementById("display_uid").textContent = data.uid || '-';
+            document.getElementById("display_otp").textContent = data.otp || '-';
+
+            // Show full JSON response for debugging
+            document.getElementById("response").textContent = JSON.stringify(data, null, 2);
+
+            // Auto-fill OTP field for convenience
+            document.getElementById("uid").value = data.uid || '';
+            document.getElementById("otp").value = data.otp || '';
+        }
+
+        async function verifyOTP() {
+            const uid = document.getElementById("uid").value;
+            const otp = document.getElementById("otp").value;
+            const res = await fetch("http://localhost:8080/student/otp/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ uid, otp })
+            });
+            const data = await res.json();
+            document.getElementById("response").textContent = JSON.stringify(data, null, 2);
+        }
+    </script>
 </body>
 </html>
