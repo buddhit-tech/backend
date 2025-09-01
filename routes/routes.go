@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"school-auth/internal/handlers"
+	"school-auth/handlers"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/gin-gonic/gin"

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"school-auth/internal/models"
+	"school-auth/models"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/gin-gonic/gin"

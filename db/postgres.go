@@ -5,13 +5,19 @@ import (
 	"fmt"
 	"log"
 
-	"school-auth/internal/config"
-
 	_ "github.com/lib/pq"
 )
 
+type Config struct {
+	DBHost     string
+	DBUser     string
+	DBPassword string
+	DBName     string
+	DBSSLMode  string
+}
+
 // Connect connects to PostgreSQL and pings immediately
-func Connect(cfg *config.Config) (*sql.DB, error) {
+func Connect(cfg *Config) (*sql.DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s sslmode=%s",
 		cfg.DBHost, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSSLMode,
