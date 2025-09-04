@@ -3,13 +3,11 @@ package main
 import (
 	"backend/config"
 	"backend/routes"
-	"fmt"
 )
 
 func main() {
-	fmt.Println("Hello World")
-	config.LoadEnv()
 	config.InitLogger()
+	config.LoadEnv()
 	// Connect to database
 	pool := config.Connect()
 	defer pool.Close()
