@@ -11,4 +11,10 @@ type Student struct {
 	DOB       string `json:"dob"`
 	Image     string `json:"image"`
 	Class     string `json:"class"`
+	Password  string `json:"password"`
+}
+
+type StudentLoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
