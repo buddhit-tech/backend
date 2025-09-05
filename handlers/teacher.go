@@ -1,13 +1,12 @@
 package handlers
 
 import (
+	"backend/models"
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
 	"net/http"
 	"time"
-
-	"school-auth/models"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/gin-gonic/gin"
