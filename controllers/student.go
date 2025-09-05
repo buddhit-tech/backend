@@ -87,5 +87,8 @@ type StudentResetPasswordController struct{
 			return
 		}
 
-		ctx.JSON(http.StatusOK,gin.H{"message":"student password reset succesfully"})
+		ctx.JSON(http.StatusOK,gin.H{
+			"status": true,
+			"message":"student password reset succesfully",
+		})
 	}
