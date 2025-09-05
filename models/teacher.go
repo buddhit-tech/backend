@@ -9,4 +9,5 @@ type Teacher struct {
 	School    string `json:"school"`
 	DOB       string `json:"dob"`
 	Image     string `json:"image"`
+	Password  string `json:"password"`
 }

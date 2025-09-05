@@ -1,93 +1,47 @@
 package routes
 
 import (
-	"database/sql"
-	"net/http"
-	"time"
+	"backend/controllers"
+	"backend/middleware"
 
-	"school-auth/handlers"
-
-	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func RegisterRoutes(r *gin.Engine, db *sql.DB, mc *memcache.Client, otpTTL time.Duration) {
-	// Health check
-	r.GET("/healthz", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
+func prepareV1Routes(router *gin.Engine, db *pgxpool.Pool) {
 
-	// Students
-	r.GET("/students", func(c *gin.Context) {
-		rows, err := db.Query(`SELECT id, student_id, full_name, email, phone_number, school, teacher_id, dob, image, class FROM students`)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		defer rows.Close()
+	v1 := router.Group("/v1")
 
-		var students []map[string]interface{}
-		for rows.Next() {
-			var s = make(map[string]interface{})
-			var id string
-			var studentID, fullName, email, phone, school, teacherID, dob, image, class string
-			if err := rows.Scan(&id, &studentID, &fullName, &email, &phone, &school, &teacherID, &dob, &image, &class); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
-			}
-			s["id"] = id
-			s["student_id"] = studentID
-			s["full_name"] = fullName
-			s["email"] = email
-			s["phone_number"] = phone
-			s["school"] = school
-			s["teacher_id"] = teacherID
-			s["dob"] = dob
-			s["image"] = image
-			s["class"] = class
-			students = append(students, s)
-		}
-		c.JSON(http.StatusOK, students)
-	})
+	public := v1.Group("/public")
+	{
+		studentController := controllers.StudentController{DB: db}
+		teacherController := controllers.TeacherController{DB: db}
+		public.POST("/students/login", studentController.Login)
+		public.POST("/teachers/login", teacherController.Login)
+	}
 
-	// Teachers
-	r.GET("/teachers", func(c *gin.Context) {
-		rows, err := db.Query(`SELECT id, teacher_id, full_name, email, phone_number, school, dob, image FROM teachers`)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		defer rows.Close()
+	students := v1.Group("/students")
+	students.Use(middleware.AuthMiddleware())
+	{
+		//studentController := controllers.StudentController{DB: db}
+		students.GET("/profile", func(ctx *gin.Context) {
+			userID := ctx.GetInt("user_id")
+			email := ctx.GetString("email")
 
-		var teachers []map[string]interface{}
-		for rows.Next() {
-			var t = make(map[string]interface{})
-			var id string
-			var teacherID, fullName, email, phone, school, dob, image string
-			if err := rows.Scan(&id, &teacherID, &fullName, &email, &phone, &school, &dob, &image); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
-			}
-			t["id"] = id
-			t["teacher_id"] = teacherID
-			t["full_name"] = fullName
-			t["email"] = email
-			t["phone_number"] = phone
-			t["school"] = school
-			t["dob"] = dob
-			t["image"] = image
-			teachers = append(teachers, t)
-		}
-		c.JSON(http.StatusOK, teachers)
-	})
+			ctx.JSON(200, gin.H{
+				"user_id": userID,
+				"email":   email,
+			})
+		})
+	}
 
-	// Student login OTP
-	r.POST("/student/login", handlers.StudentLoginHandler(db, mc, int(otpTTL.Seconds())))
-	// Student OTP verify
-	r.POST("/student/otp/verify", handlers.VerifyStudentOTPHandler(mc))
+}
 
-	// Teacher login OTP
-	r.POST("/teacher/login", handlers.TeacherLoginHandler(db, mc, int(otpTTL.Seconds())))
-	// Teacher OTP verify
-	r.POST("/teacher/otp/verify", handlers.VerifyTeacherOTPHandler(mc))
+func SetupRoutes(db *pgxpool.Pool) *gin.Engine {
+	router := gin.New()
+	router.Use(gin.Logger())
+	router.Use(gin.Recovery())
+	router.Use(CORSMiddleware())
+	prepareV1Routes(router, db)
+	return router
 }
