@@ -18,3 +18,9 @@ type StudentLoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
+
+
+type StudentResetPasswordRequest struct {
+	Email    string `json:"email"`
+	NewPassword string `json:"new_password"`
+}

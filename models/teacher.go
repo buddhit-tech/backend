@@ -11,3 +11,8 @@ type Teacher struct {
 	Image     string `json:"image"`
 	Password  string `json:"password"`
 }
+
+type TeacherResetPasswordRequest struct {
+	Email    string `json:"email"`
+	NewPassword string `json:"new_password"`
+}

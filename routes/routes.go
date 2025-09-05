@@ -17,8 +17,15 @@ func prepareV1Routes(router *gin.Engine, db *pgxpool.Pool) {
 		studentController := controllers.StudentController{DB: db}
 		teacherController := controllers.TeacherController{DB: db}
 		public.POST("/students/login", studentController.Login)
-		public.POST("/teachers/login", teacherController.Login)
+		public.POST("/teacher/login", teacherController.Login)
 	}
+
+	studentResetController := controllers.StudentResetPasswordController{DB: db}
+	public.POST("/students/reset-password", studentResetController.ResetPassword)
+
+	teacherResetController := controllers.TeacherResetPasswordController{DB: db}
+	public.POST("/teacher/reset-password", teacherResetController.ResetPassword)
+
 
 	students := v1.Group("/students")
 	students.Use(middleware.AuthMiddleware())
@@ -34,7 +41,6 @@ func prepareV1Routes(router *gin.Engine, db *pgxpool.Pool) {
 			})
 		})
 	}
-
 }
 
 func SetupRoutes(db *pgxpool.Pool) *gin.Engine {
