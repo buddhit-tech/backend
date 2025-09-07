@@ -30,7 +30,7 @@ func prepareV1Routes(router *gin.Engine, db *pgxpool.Pool) {
 	students := v1.Group("/students")
 	students.Use(middleware.AuthMiddleware())
 	{
-		//studentController := controllers.StudentController{DB: db}
+		studentController := controllers.StudentController{DB: db}
 		students.GET("/profile", func(ctx *gin.Context) {
 			userID := ctx.GetInt("user_id")
 			email := ctx.GetString("email")
@@ -40,6 +40,25 @@ func prepareV1Routes(router *gin.Engine, db *pgxpool.Pool) {
 				"email":   email,
 			})
 		})
+
+		students.GET("/:id", studentController.GetStudentByID)
+	}
+
+	teachers := v1.Group("/teachers")
+	teachers.Use(middleware.AuthMiddleware())
+	{
+		teacherController := controllers.TeacherController{DB: db}
+		teachers.GET("/profile", func(ctx *gin.Context) {
+			userID := ctx.GetInt("user_id")
+			email := ctx.GetString("email")
+
+			ctx.JSON(200, gin.H{
+				"user_id": userID,
+				"email":   email,
+			})
+		})
+
+		teachers.GET("/:id", teacherController.GetTeacherByID)
 	}
 }
 

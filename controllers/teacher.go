@@ -92,3 +92,29 @@ type TeacherResetPasswordController struct{
 			"message":"teacher password reset succesfully",
 		})
 	}
+
+
+	// Get Teacher By ID
+
+
+	func(c*TeacherController) GetTeacherByID(ctx *gin.Context){
+		teacherID := ctx.Param("id")
+
+		var id, fullName, email string
+		err := c.DB.QueryRow(
+			ctx.Request.Context(),
+			"SELECT id, full_name, email FROM teachers WHERE id=$1",
+			teacherID,
+		).Scan(&id, &fullName, &email,)
+
+		if err != nil{
+			ctx.JSON(http.StatusNotFound, gin.H{"error": "teacher not found"})
+			return 
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{
+			"id": id,
+			"name": fullName,
+			"email": email,
+		})
+	}

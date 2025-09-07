@@ -45,6 +45,7 @@ func (c *StudentController) Login(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": "login successful",
+		"id": id,
 		"token":   token,
 		"user": gin.H{
 			"id":    id,
@@ -91,4 +92,29 @@ type StudentResetPasswordController struct{
 			"status": true,
 			"message":"student password reset succesfully",
 		})
+	}
+
+	//Get Student by ID
+
+	func(c*StudentController) GetStudentByID(ctx *gin.Context){
+		studentID := ctx.Param("id")
+
+		var id, fullName, email string
+		err := c.DB.QueryRow(
+			ctx.Request.Context(),
+			"SELECT id, full_name, email FROM students WHERE id=$1",
+			studentID,
+		).Scan(&id, &fullName, &email,)
+
+		if err != nil{
+			ctx.JSON(http.StatusNotFound, gin.H{"error": "student not found"})
+			return 
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{
+			"id": id,
+			"name": fullName,
+			"email": email,
+		})
+
 	}
