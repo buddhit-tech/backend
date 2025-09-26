@@ -1,17 +1,14 @@
 package models
 
 type Student struct {
-	ID        string `json:"id"`
-	StudentID string `json:"student_id"`
-	FullName  string `json:"full_name"`
-	Email     string `json:"email"`
-	Phone     string `json:"phone_number"`
-	School    string `json:"school"`
-	TeacherID string `json:"teacher_id"`
-	DOB       string `json:"dob"`
-	Image     string `json:"image"`
-	Class     string `json:"class"`
-	Password  string `json:"password"`
+	ID        string  `db:"id" json:"id"`
+	StudentID string  `db:"student_id" json:"student_id"`
+	FullName  string  `db:"full_name" json:"full_name"`
+	Email     string  `db:"email" json:"email"`
+	Phone     string  `db:"phone_number" json:"phone_number"`
+	DOB       *string `db:"dob" json:"dob"`
+	Image     *string `db:"image" json:"image"`
+	Password  *string `db:"password" json:"password"`
 }
 
 type StudentLoginRequest struct {
@@ -19,8 +16,6 @@ type StudentLoginRequest struct {
 	Password string `json:"password"`
 }
 
-
 type StudentResetPasswordRequest struct {
-	Email    string `json:"email"`
-	NewPassword string `json:"new_password"`
+	Password string `json:"password"`
 }

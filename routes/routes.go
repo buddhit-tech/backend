@@ -12,25 +12,18 @@ func prepareV1Routes(router *gin.Engine, db *pgxpool.Pool) {
 
 	v1 := router.Group("/v1")
 
+	studentController := controllers.StudentController{DB: db}
+	teacherController := controllers.TeacherController{DB: db}
+
 	public := v1.Group("/public")
 	{
-		studentController := controllers.StudentController{DB: db}
-		teacherController := controllers.TeacherController{DB: db}
 		public.POST("/students/login", studentController.Login)
 		public.POST("/teacher/login", teacherController.Login)
 	}
 
-	studentResetController := controllers.StudentResetPasswordController{DB: db}
-	public.POST("/students/reset-password", studentResetController.ResetPassword)
-
-	teacherResetController := controllers.TeacherResetPasswordController{DB: db}
-	public.POST("/teacher/reset-password", teacherResetController.ResetPassword)
-
-
 	students := v1.Group("/students")
 	students.Use(middleware.AuthMiddleware())
 	{
-		//studentController := controllers.StudentController{DB: db}
 		students.GET("/profile", func(ctx *gin.Context) {
 			userID := ctx.GetInt("user_id")
 			email := ctx.GetString("email")
@@ -40,6 +33,12 @@ func prepareV1Routes(router *gin.Engine, db *pgxpool.Pool) {
 				"email":   email,
 			})
 		})
+		students.POST("/reset-password", studentController.ResetPassword)
+		students.GET("/me", studentController.GetDetails)
+		students.GET("/chats", studentController.GetChatList)
+		students.GET("/chats/:id", studentController.GetChatDetailsByID)
+		students.GET("/chats/:id/messages", studentController.GetChatMessages)
+		students.GET("/scs_mapping", studentController.GetSCSMapping)
 	}
 }
 

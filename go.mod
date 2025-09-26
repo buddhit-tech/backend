@@ -4,6 +4,7 @@ go 1.23.10
 
 require (
 	github.com/bradfitz/gomemcache v0.0.0-20250403215159-8d39553ac7cf
+	github.com/georgysavva/scany/v2 v2.1.4
 	github.com/gin-gonic/gin v1.10.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/jackc/pgx/v5 v5.7.5
